@@ -61,6 +61,25 @@ const schema = `
         UpdatedAt TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS InventoryTransactions (
+        Id TEXT PRIMARY KEY NOT NULL,
+        ProductId TEXT NOT NULL REFERENCES Products(Id),
+        UserId TEXT NOT NULL REFERENCES Users(Id),
+        Type TEXT NOT NULL CHECK (Type IN ('StockIn', 'StockOut', 'Adjustment')),
+        Quantity INTEGER NOT NULL CHECK (
+            typeof(Quantity) = 'integer' AND
+            Quantity >= 0 AND
+            (Type = 'Adjustment' OR Quantity > 0)
+        ),
+        PreviousQuantity INTEGER NOT NULL
+            CHECK (typeof(PreviousQuantity) = 'integer' AND PreviousQuantity >= 0),
+        NewQuantity INTEGER NOT NULL
+            CHECK (typeof(NewQuantity) = 'integer' AND NewQuantity >= 0),
+        Reason TEXT,
+        ReferenceNumber TEXT,
+        CreatedAt TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_categories_name ON Categories(Name);
     CREATE INDEX IF NOT EXISTS idx_suppliers_name ON Suppliers(Name);
     CREATE INDEX IF NOT EXISTS idx_users_email ON Users(Email);
@@ -69,6 +88,12 @@ const schema = `
     CREATE INDEX IF NOT EXISTS idx_products_category_id ON Products(CategoryId);
     CREATE INDEX IF NOT EXISTS idx_products_supplier_id ON Products(SupplierId);
     CREATE INDEX IF NOT EXISTS idx_products_name ON Products(Name);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_product_created
+        ON InventoryTransactions(ProductId, CreatedAt);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_user_id
+        ON InventoryTransactions(UserId);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_type_created
+        ON InventoryTransactions(Type, CreatedAt);
 `;
 
 export function initializeSchema() {
