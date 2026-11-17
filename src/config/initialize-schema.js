@@ -55,6 +55,8 @@ const schema = `
         CHECK (typeof(Quantity) = 'integer' AND Quantity >= 0),
         ReorderLevel INTEGER NOT NULL DEFAULT 10
         CHECK (typeof(ReorderLevel) = 'integer' AND ReorderLevel >= 0),
+        IsActive INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(IsActive) = 'integer' AND IsActive IN (0, 1)),
         CreatedAt TEXT NOT NULL,
         UpdatedAt TEXT NOT NULL
     );
@@ -71,7 +73,22 @@ const schema = `
 
 export function initializeSchema() {
     try {
-        database.transaction(() => database.exec(schema))();
+        database.transaction(() => {
+            database.exec(schema);
+
+            const productColumns = database.pragma("table_info('Products')");
+            if (!productColumns.some((column) => column.name === 'IsActive')) {
+                database.exec(`
+                    ALTER TABLE Products
+                    ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1
+                    CHECK (typeof(IsActive) = 'integer' AND IsActive IN (0, 1))
+                `);
+            }
+
+            database.exec(
+                'CREATE INDEX IF NOT EXISTS idx_products_is_active ON Products(IsActive)',
+            );
+        })();
     } catch (error) {
         throw new Error('Failed to initialize the database schema.', {
             cause: error,
